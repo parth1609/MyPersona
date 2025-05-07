@@ -1,0 +1,11 @@
+langchain-community
+pypdf
+rapidocr-onnxruntime
+PyMuPDF
+tabula-py
+pytesseract
+Pillow
+unstructured[pdf]
+pandas
+camelot-py[cv]
+pdfplumber
