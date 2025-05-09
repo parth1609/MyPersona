@@ -1,3 +1,4 @@
+# Ensure Tesseract is installed and pytesseract is configured if needed
 import os
 import fitz  # PyMuPDF
 import tabula
@@ -7,8 +8,7 @@ from unstructured.partition.auto import partition
 import io
 import pandas as pd
 
-# Ensure Tesseract is installed and pytesseract is configured if needed
-# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Uncomment and set if needed
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"
 
 def extract_text_blocks(page):
     blocks = []
@@ -126,6 +126,18 @@ def process_pdf(pdf_path):
         page = doc[page_number]
         text_blocks = extract_text_blocks(page)
         images = extract_images_with_ocr(page, page_number+1)
+        # Fallback: If no text_blocks and no images, perform full-page OCR
+        if not text_blocks:
+            # Render the page as an image
+            try:
+                pix = page.get_pixmap()
+                img_bytes = pix.tobytes("png")
+                image = Image.open(io.BytesIO(img_bytes))
+                ocr_text = pytesseract.image_to_string(image)
+                if ocr_text.strip():
+                    text_blocks.append({"text": ocr_text.strip(), "bbox": None, "fallback_ocr": True})
+            except Exception as e:
+                print(f"Full-page OCR error on page {page_number+1}: {e}")
         page_summary = {
             "page_number": page_number+1,
             "text_blocks": text_blocks,
@@ -158,6 +170,57 @@ def process_pdf_directory(pdf_dir):
         if fname.lower().endswith(".pdf"):
             pdf_path = os.path.join(pdf_dir, fname)
             process_pdf(pdf_path)
+
+def get_all_ocr_text_from_pdf(pdf_path, temp_dir="temp_images"):
+    """
+    Extract and concatenate all OCR text from images in the entire PDF.
+    Returns a single string containing all OCR text.
+    """
+    doc = fitz.open(pdf_path)
+    all_ocr_text = []
+    for page_number in range(len(doc)):
+        page = doc[page_number]
+        images = extract_images_with_ocr(page, page_number+1, temp_dir=temp_dir)
+        for img in images:
+            if img["ocr_text"]:
+                all_ocr_text.append(img["ocr_text"])
+    return "\n".join(all_ocr_text)
+
+def get_all_pdf_text_one_line(pdf_path, temp_dir="temp_images"):
+    """
+    Extract all text (regular + OCR from images, plus fallback full-page OCR) from the entire PDF and return as a single line.
+    """
+    import fitz
+    doc = fitz.open(pdf_path)
+    all_text = []
+    # Extract text blocks from all pages, and fallback OCR if needed
+    for page_number in range(len(doc)):
+        page = doc[page_number]
+        blocks = extract_text_blocks(page)
+        if not blocks:
+            # Fallback: Render the page as an image and OCR
+            try:
+                pix = page.get_pixmap()
+                img_bytes = pix.tobytes("png")
+                image = Image.open(io.BytesIO(img_bytes))
+                ocr_text = pytesseract.image_to_string(image)
+                if ocr_text.strip():
+                    all_text.append(ocr_text.strip())
+            except Exception as e:
+                pass
+        for block in blocks:
+            if block["text"]:
+                all_text.append(block["text"])
+    # Extract OCR text from images in all pages
+    for page_number in range(len(doc)):
+        page = doc[page_number]
+        images = extract_images_with_ocr(page, page_number+1, temp_dir=temp_dir)
+        for img in images:
+            if img["ocr_text"]:
+                all_text.append(img["ocr_text"])
+    # Combine all text into a single line
+    one_line = " ".join(t.replace("\n", " ").replace("\r", " ").strip() for t in all_text if t)
+    return one_line
 
 if __name__ == "__main__":
     import sys

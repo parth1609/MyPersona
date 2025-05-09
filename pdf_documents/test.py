@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath('.'))
 from pdf_documents import extract_text_blocks, extract_images_with_ocr, extract_tables, extract_unstructured_elements, process_pdf
 
 # Path to a sample PDF file (update this if needed)
-pdf_path = os.path.join(os.getcwd(), '1page.pdf')
+pdf_path = os.path.join(os.getcwd(), 'table.pdf')
 
 def test_extract_tables():
     try:
@@ -43,6 +43,24 @@ def test_process_pdf():
     except Exception as e:
         print('process_pdf error:', e)
 
+def test_get_all_ocr_text_from_pdf():
+    try:
+        from pdf_documents import get_all_ocr_text_from_pdf
+        ocr_text = get_all_ocr_text_from_pdf(pdf_path)
+        print('All OCR Text from PDF Images:')
+        print(ocr_text)
+    except Exception as e:
+        print('get_all_ocr_text_from_pdf error:', e)
+
+def test_get_all_pdf_text_one_line():
+    try:
+        from pdf_documents import get_all_pdf_text_one_line
+        one_line_text = get_all_pdf_text_one_line(pdf_path)
+        print('All PDF Text in One Line:')
+        print(one_line_text)
+    except Exception as e:
+        print('get_all_pdf_text_one_line error:', e)
+
 def main():
     print('Testing extract_tables...')
     test_extract_tables()
@@ -52,6 +70,10 @@ def main():
     test_extract_images_with_ocr()
     print('\nTesting process_pdf...')
     test_process_pdf()
+    print('\nTesting get_all_ocr_text_from_pdf...')
+    test_get_all_ocr_text_from_pdf()
+    print('\nTesting get_all_pdf_text_one_line...')
+    test_get_all_pdf_text_one_line()
 
 if __name__ == "__main__":
     main()
